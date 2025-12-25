@@ -98,7 +98,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#020617] text-slate-200 relative">
       {/* 模型加载遮罩层 */}
       {isModelLoading && (
-        <div className="fixed inset-0 bg-[#020617]/95 backdrop-blur-sm z-[100] flex items-center justify-center">
+        <div className="fixed inset-0 bg-[#020617]/95 backdrop-blur-sm z-100 flex items-center justify-center">
           <div className="text-center space-y-6 max-w-md px-8">
             <div className="relative w-20 h-20 mx-auto">
               <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
@@ -118,7 +118,7 @@ const App: React.FC = () => {
                 <div className="mt-4 space-y-2">
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-cyan-500 transition-all duration-300"
+                      className="h-full bg-linear-to-r from-indigo-500 to-cyan-500 transition-all duration-300"
                       style={{ width: `${loadingProgress * 100}%` }}
                     />
                   </div>
@@ -304,7 +304,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 p-6 rounded-3xl shadow-xl">
+                <div className="bg-linear-to-br from-indigo-900 to-indigo-700 p-6 rounded-3xl shadow-xl">
                   <h3 className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
                     推理引擎状态
                   </h3>

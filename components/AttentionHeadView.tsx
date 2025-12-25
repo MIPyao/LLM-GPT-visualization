@@ -399,7 +399,7 @@ const AttentionHeadView: React.FC<Props> = ({
             <div className="px-3 py-1 bg-indigo-600 rounded-full text-[9px] font-black text-white uppercase tracking-tighter mb-1">
               Linear Projection
             </div>
-            <div className="h-12 w-px bg-gradient-to-b from-indigo-600 to-transparent" />
+            <div className="h-12 w-px bg-linear-to-b from-indigo-600 to-transparent" />
           </div>
         </div>
       </div>

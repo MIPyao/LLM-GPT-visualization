@@ -1,33 +1,33 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { HiddenState } from "@/types";
+import { TransformerStates } from "@/types";
 import "katex/dist/katex.min.css";
 // @ts-expect-error: No types available for 'react-katex'
 import { BlockMath } from "react-katex";
 
 interface Props {
   tokens: string[];
-  hiddenStates?: HiddenState[] | null;
+  transformerStates?: TransformerStates[] | null;
   activeLayer?: number;
   onLayerChange?: (layerIndex: number) => void;
 }
 
 const AttentionHeadView: React.FC<Props> = ({
   tokens,
-  hiddenStates,
+  transformerStates,
   activeLayer = 0,
   onLayerChange,
 }) => {
   const [activeHead, setActiveHead] = useState(0);
 
-  // 从 hiddenStates 中获取当前层的数据
+  // 从 transformerStates 中获取当前层的数据
   const currentLayerData = useMemo(() => {
-    if (!hiddenStates || hiddenStates.length === 0) return null;
+    if (!transformerStates || transformerStates.length === 0) return null;
     // 如果提供了 activeLayer，尝试找到对应的层
-    const layerData = hiddenStates.find((h) => h.layerIndex === activeLayer);
-    return layerData || hiddenStates[activeLayer] || null;
-  }, [hiddenStates, activeLayer]);
+    const layerData = transformerStates.find((h) => h.layerIndex === activeLayer);
+    return layerData || transformerStates[activeLayer] || null;
+  }, [transformerStates, activeLayer]);
 
   // 推断注意力头数量（从 key/value 的维度）
   // 维度格式: [batch_size, num_heads, sequence_length, head_dim]
@@ -167,16 +167,12 @@ const AttentionHeadView: React.FC<Props> = ({
 
   // 获取可用的层索引
   const availableLayers = useMemo(() => {
-    if (!hiddenStates || hiddenStates.length === 0) return [];
-    return hiddenStates
+    if (!transformerStates || transformerStates.length === 0) return [];
+    return transformerStates
       .map((h, idx) => (h.layerIndex !== undefined ? h.layerIndex : idx))
       .filter((v, i, arr) => arr.indexOf(v) === i)
       .sort((a, b) => a - b);
-  }, [hiddenStates]);
-
-  const hasRealData =
-    !!currentLayerData &&
-    (!!currentLayerData.keyData || !!currentLayerData.valueData);
+  }, [transformerStates]);
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,9 @@
 "use client";
-
 import React, { useMemo } from "react";
 import { EmbeddingData } from "@/types";
+// @ts-expect-error: No types available for 'react-katex'
+import { InlineMath } from "react-katex";
+import "katex/dist/katex.min.css";
 
 interface Props {
   tokens: string[];
@@ -83,27 +85,27 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
       </div>
 
       <div className="flex flex-wrap gap-4 mt-6">
-      {tokens.map((token, idx) => {
-        const vector = getTokenEmbedding(idx);
-        const displayVector = vector.slice(0, displayDims);
-        let stats = null;
-        if (hasRealData && vector.length > 0) {
-          const mean = vector.reduce((a, b) => a + b, 0) / vector.length;
-          const std = Math.sqrt(
-            vector.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-              vector.length
-          );
-          const min = Math.min(...vector);
-          const max = Math.max(...vector);
-          stats = { mean, std, min, max };
-        }
+        {tokens.map((token, idx) => {
+          const vector = getTokenEmbedding(idx);
+          const displayVector = vector.slice(0, displayDims);
+          let stats = null;
+          if (hasRealData && vector.length > 0) {
+            const mean = vector.reduce((a, b) => a + b, 0) / vector.length;
+            const std = Math.sqrt(
+              vector.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+                vector.length
+            );
+            const min = Math.min(...vector);
+            const max = Math.max(...vector);
+            stats = { mean, std, min, max };
+          }
 
           return (
             <div key={idx} className="flex flex-col items-center group">
               <div className="bg-slate-900 px-2 py-1 rounded border border-slate-700 mb-2 code-font text-[10px] text-cyan-300 transition-colors group-hover:border-cyan-500/50">
                 {token}
               </div>
-              <div className="grid grid-cols-8 gap-0.5 p-1 bg-slate-950 rounded-sm border border-slate-800">
+              <div className="grid grid-cols-16 gap-0.5 p-1 bg-slate-950 rounded-sm border border-slate-800">
                 {displayVector.map((val, vIdx) => {
                   // 归一化值用于可视化
                   const normalizedVal = hasRealData ? normalizeValue(val) : val;
@@ -115,9 +117,7 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
                         backgroundColor: hasRealData
                           ? val > 0
                             ? `rgba(34, 211, 238, ${normalizedVal})`
-                            : `rgba(239, 68, 68, ${
-                                (1 - normalizedVal)
-                              })`
+                            : `rgba(239, 68, 68, ${1 - normalizedVal})`
                           : `rgba(34, 211, 238, ${normalizedVal})`,
                         opacity: normalizedVal,
                       }}
@@ -146,39 +146,48 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 text-[10px] text-slate-500 font-mono">
+        {/* 词元嵌入模块 */}
         <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-800">
-          <span className="text-cyan-500/70 block mb-1">
-            {hasRealData ? "// 词元嵌入 (WTE)" : "// 语义空间压缩"}
+          <span className="text-cyan-500/70 block mb-2 font-bold">
+            {hasRealData ? "// 词元嵌入 (WTE)" : "// 仿真语义空间"}
           </span>
-          {hasRealData
-            ? `E = Embedding(token_id) ∈ R^${embedDim || 768}`
-            : "Visual Fingerprint = Hash(Token) -> R^d"}
-        </div>
-        <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-800">
-          <span className="text-cyan-500/70 block mb-1">
-            {hasRealData ? "// 位置嵌入 (WPE)" : "// 位置编码叠加"}
-          </span>
-          {hasRealData
-            ? `PE = PositionEmbedding(pos) ∈ R^${embedDim || 768}`
-            : "PE(pos, 2i) = sin(pos / 10000^(2i/d))"}
-          <div className="mt-1 text-cyan-400/50">
-            {hasRealData && "最终: E + PE"}
-          </div>
-        </div>
-      </div>
-
-      {hasRealData && embedDim && (
-        <div className="mt-4 pt-3 border-t border-slate-800">
-          <div className="text-[10px] text-slate-400">
-            <span className="text-green-400">✓</span> 使用真实模型嵌入数据
-            {embeddingData.dims && (
-              <span className="ml-2 text-slate-500">
-                维度: [{embeddingData.dims.join(", ")}]
-              </span>
+          <div className="text-slate-300 scale-90 origin-left">
+            {hasRealData ? (
+              <InlineMath
+                math={`\\mathbf{e}_{i} = \\text{WTE}[id_i] \\in \\mathbb{R}^{${
+                  embedDim || 384
+                }}`}
+              />
+            ) : (
+              <InlineMath math="\text{vec} \approx \mathcal{H}(\text{token}) \to \mathbb{R}^d" />
             )}
           </div>
         </div>
-      )}
+
+        {/* 位置嵌入模块 */}
+        <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-800">
+          <span className="text-cyan-500/70 block mb-2 font-bold">
+            {hasRealData ? "// 位置嵌入 (WPE)" : "// 旋转/正弦位置编码"}
+          </span>
+          <div className="text-slate-300 scale-90 origin-left">
+            {hasRealData ? (
+              <InlineMath
+                math={`\\mathbf{p}_{i} = \\text{WPE}[pos_i] \\in \\mathbb{R}^{${
+                  embedDim || 384
+                }}`}
+              />
+            ) : (
+              <InlineMath math="PE_{(p, 2i)} = \sin(\frac{p}{10000^{2i/d}})" />
+            )}
+          </div>
+
+          {hasRealData && (
+            <div className="mt-2 pt-2 border-t border-slate-800 text-cyan-400/70">
+              <InlineMath math="\mathbf{h}_0 = \mathbf{e}_i + \mathbf{p}_i" />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

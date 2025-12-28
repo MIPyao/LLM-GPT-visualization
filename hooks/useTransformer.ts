@@ -8,6 +8,7 @@ export function useTransformer() {
   const [isReady, setIsReady] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [generator, setGenerator] = useState<any>(null);
+  const [miniModel, setMiniModel] = useState<any>(null);
   const [tokenizer, setTokenizer] = useState<any>(null);
   const [currentModel, setCurrentModel] = useState<ModelType>("Xenova/gpt2");
   const [error, setError] = useState<string | null>(null);
@@ -230,7 +231,7 @@ export function useTransformer() {
             }
           );
           console.log("[Transformers] ✅ 模型加载成功");
-          console.log(model)
+          console.log("[Transformers] 原始模型对象:", model);
           // 加载后再次检查缓存状态
           console.log("[Cache] 模型加载后，检查缓存状态...");
           await checkCacheStatus();
@@ -269,6 +270,14 @@ export function useTransformer() {
           throw modelError;
         }
 
+
+          // 2. 加载 MiniLM (用于获取真实的 last_hidden_state)
+          
+          const featureModel = await TransformersModule.AutoModel.from_pretrained(
+            "Xenova/all-MiniLM-L6-v2",
+            { progress_callback: ( p: any) => setLoadingProgress(0.5 + p.progress * 0.5) }
+          );
+          console.log("[Transformers] 加载特征提取模型: Xenova/all-MiniLM-L6-v2", featureModel);
         console.log("[Transformers] 开始加载分词器...");
         const tokenizerOptions: any = {};
         if (hfToken) {
@@ -283,6 +292,7 @@ export function useTransformer() {
 
         console.log("[Transformers] 初始化完成");
         setGenerator(() => model);
+        setMiniModel(() => featureModel);
         setTokenizer(() => tok);
         setIsReady(true);
       } catch (err: any) {
@@ -475,6 +485,32 @@ export function useTransformer() {
         throw callError;
       }
 
+      // --- 支路 2: 调用 MiniLM 获取真实 Embedding ---
+    console.log("[Transformers] MiniLM 提取特征...");
+    const featureOutputs = await miniModel(encoded); 
+    
+    // 从 MiniLM 中提取你在 Netron 看到的节点
+    let embeddingData: any = null;
+    if (featureOutputs.last_hidden_state) {
+      const tensor = featureOutputs.last_hidden_state;
+      const rawData = extractTensorData(tensor);
+      const dims = tensor.dims; // [1, seq_len, 384]
+
+      // 切分出每个 Token 的向量
+      const [batch, seqLen, dim] = dims;
+      const tokenEmbeddings: number[][] = [];
+      for (let i = 0; i < seqLen; i++) {
+        tokenEmbeddings.push(Array.from(rawData.slice(i * dim, (i + 1) * dim)));
+      }
+
+      embeddingData = {
+        data: rawData,
+        dims: dims,
+        tokenEmbeddings: tokenEmbeddings
+      };
+      console.log("✅ 成功从 MiniLM 获取真实 Hidden States", embeddingData);
+    }
+
       // 提取 logits（最后一层的输出）
       let logits: number[] = [];
       if (outputs?.logits) {
@@ -506,20 +542,14 @@ export function useTransformer() {
         console.log(`[Transformers] 最终提取了 ${logits.length} 个 logits 值`);
       }
 
-      // 提取 hidden_states（所有层的输出）
-      // 注意：@xenova/transformers 的某些模型可能不支持返回 hidden_states
-      // 即使设置了 output_hidden_states: true，也可能不会返回这个字段
-      let hiddenStates: any[] | null = null;
-      let embeddingData: any = null; // 嵌入层数据（hidden_states[0]）
+      const transformerStates: any[] = [];
 
-      // 如果没有嵌入层数据，尝试从 past_key_values 的第一层获取（作为近似）
-      if (!embeddingData && outputs?.past_key_values) {
-        // 如果没有 hidden_states，尝试从 past_key_values 中提取信息
+      // 提取 past_key_values （transformer层的输出）
+      if (outputs?.past_key_values) {
         // past_key_values 包含每一层的 key 和 value 张量
         console.log("[Transformers] 从 past_key_values 中提取层信息...");
 
         const pastKeyValues = outputs.past_key_values;
-        const extractedStates: any[] = [];
 
         // past_key_values 是对象
         if (typeof pastKeyValues === "object") {
@@ -559,31 +589,7 @@ export function useTransformer() {
               const mainTensor = valueTensor || keyTensor;
 
               if (mainTensor) {
-                const rawData = extractTensorData(mainTensor);
-                const rawDims = mainTensor?.dims || null;
-
-                // 如果维度是 [batch, num_heads, seq_len, head_dim] 格式，需要重塑为 [batch, seq_len, hidden_dim]
-                let finalData = rawData;
-                let finalDims = rawDims;
-
-                if (rawDims && Array.isArray(rawDims) && rawDims.length === 4) {
-                  // 这是多头注意力格式，需要重塑
-                  const reshaped = reshapeMultiHeadToHiddenStates(
-                    rawData,
-                    rawDims
-                  );
-                  finalData = reshaped.data;
-                  finalDims = reshaped.dims;
-                  console.log(
-                    `[Transformers] 重塑层 ${layerIndex} 的数据: ${rawDims.join(
-                      ","
-                    )} -> ${finalDims.join(",")}`
-                  );
-                }
-
-                extractedStates.push({
-                  data: finalData,
-                  dims: finalDims,
+                transformerStates.push({
                   layerIndex,
                   hasKey: !!keyKey,
                   hasValue: !!valueKey,
@@ -599,74 +605,10 @@ export function useTransformer() {
             });
         }
 
-        if (extractedStates.length > 0) {
-          hiddenStates = extractedStates;
+        if (transformerStates.length > 0) {
           console.log(
-            `[Transformers] 从 past_key_values 中提取了 ${hiddenStates.length} 层的信息`
+            `[Transformers] 从 past_key_values 中提取了 ${transformerStates.length} 层的信息`
           );
-
-          // 如果没有嵌入层数据，尝试使用第一层（layerIndex=0）作为嵌入层的近似
-          // 注意：这不是真正的嵌入层，而是第一个 Transformer 层的输出，但可以作为近似
-          if (!embeddingData && extractedStates.length > 0) {
-            const firstLayer =
-              extractedStates.find((s) => s.layerIndex === 0) ||
-              extractedStates[0];
-            if (firstLayer && firstLayer.data && firstLayer.dims) {
-              const embeddingRawData = firstLayer.data;
-              const embeddingDims = firstLayer.dims;
-
-              // 解析维度：[batch, seq_len, hidden_dim] 或 [seq_len, hidden_dim]
-              let batchSize = 1;
-              let seqLen = tokens.length;
-              let embedDim = 768; // GPT-2 默认隐藏维度
-
-              if (Array.isArray(embeddingDims)) {
-                if (embeddingDims.length === 3) {
-                  [batchSize, seqLen, embedDim] = embeddingDims;
-                } else if (embeddingDims.length === 2) {
-                  [seqLen, embedDim] = embeddingDims;
-                } else if (embeddingDims.length === 1) {
-                  embedDim = embeddingDims[0];
-                }
-              }
-
-              // 提取每个 token 的嵌入向量
-              const tokenEmbeddings: number[][] = [];
-              const expectedSize = batchSize * seqLen * embedDim;
-
-              if (embeddingRawData.length >= expectedSize) {
-                // 只处理第一个 batch（通常 batch_size = 1）
-                const batchIdx = 0;
-                for (let i = 0; i < Math.min(seqLen, tokens.length); i++) {
-                  // 计算在重塑后的数据中的索引: batch * (seq_len * embed_dim) + seq * embed_dim
-                  const startIdx =
-                    batchIdx * (seqLen * embedDim) + i * embedDim;
-                  const endIdx = startIdx + embedDim;
-                  tokenEmbeddings.push(
-                    embeddingRawData.slice(startIdx, endIdx)
-                  );
-                }
-
-                embeddingData = {
-                  data: embeddingRawData,
-                  dims: embeddingDims,
-                  tokenEmbeddings,
-                };
-
-                console.log(
-                  `[Transformers] ⚠️ 使用 past_key_values 的第一层作为嵌入层近似: ` +
-                    `dims=[${embeddingDims.join(
-                      ", "
-                    )}], embed_dim=${embedDim}, ` +
-                    `提取了 ${tokenEmbeddings.length} 个token的嵌入向量`
-                );
-              } else {
-                console.warn(
-                  `[Transformers] ⚠️ 数据大小不匹配: 期望 ${expectedSize}, 实际 ${embeddingRawData.length}`
-                );
-              }
-            }
-          }
         } else {
           console.log(
             "[Transformers] ⚠️ 无法从 past_key_values 中提取层信息",
@@ -676,7 +618,7 @@ export function useTransformer() {
         }
       } else {
         console.log(
-          "[Transformers] ⚠️ outputs 中没有 hidden_states 或 past_key_values 字段",
+          "[Transformers] ⚠️ outputs 中没有 past_key_values 字段",
           "\n可用的字段:",
           outputs ? Object.keys(outputs) : "无"
         );
@@ -749,8 +691,8 @@ export function useTransformer() {
 
       // 生成解释文本
       let explanationText = `本地引擎推理成功：正在使用浏览器 WebAssembly 驱动 ${currentModel} 模型。`;
-      if (hiddenStates && hiddenStates.length > 0) {
-        explanationText += `已从 past_key_values 中提取 ${hiddenStates.length} 层的信息（包含注意力机制的 key/value）和最后一层的 logits。`;
+      if (transformerStates && transformerStates.length > 0) {
+        explanationText += `已从 past_key_values 中提取 ${transformerStates.length} 层的信息（包含注意力机制的 key/value）和最后一层的 logits。`;
       }
 
       return {
@@ -758,7 +700,7 @@ export function useTransformer() {
         probabilities,
         logits: logitsData,
         explanation: explanationText,
-        hiddenStates,
+        transformerStates,
         embeddingData,
       };
     } catch (err: any) {
@@ -771,6 +713,8 @@ export function useTransformer() {
       return null;
     }
   };
+
+
 
   return { initModel, generate, isReady, loadingProgress, currentModel, error };
 }

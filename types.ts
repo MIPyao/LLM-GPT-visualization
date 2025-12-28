@@ -17,9 +17,7 @@ export interface ModelStep {
   component: "embedding" | "transformer" | "output";
 }
 
-export interface HiddenState {
-  data: number[];
-  dims: number[] | null;
+export interface TransformerStates {
   layerIndex?: number; // Transformer 层索引 (0-11)
   keyData?: number[]; // 注意力机制的 Key 张量数据
   valueData?: number[]; // 注意力机制的 Value 张量数据
@@ -37,7 +35,7 @@ export interface AnalysisResult {
   tokens: string[];
   explanation: string;
   probabilities: { token: string; prob: number }[];
-  hiddenStates?: HiddenState[] | null;
+  transformerStates?: TransformerStates[] | null;
   logits?: { token: string; logit: number }[]; // Softmax 之前的原始 logits
   embeddingData?: EmbeddingData | null; // 嵌入层数据（词元嵌入+位置嵌入）
 }

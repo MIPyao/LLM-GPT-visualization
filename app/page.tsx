@@ -244,28 +244,26 @@ const App: React.FC = () => {
           {analysis ? (
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <div className="glass p-8 rounded-3xl border border-slate-700/50 relative overflow-hidden min-h-[500px]">
-                  {activeLayer === 0 && (
-                    <EmbeddingVisualizer
-                      tokens={analysis.tokens}
-                      embeddingData={analysis.embeddingData}
-                    />
-                  )}
-                  {activeLayer === 1 && (
-                    <AttentionHeadView
-                      tokens={analysis.tokens}
-                      hiddenStates={analysis.hiddenStates}
-                      activeLayer={activeTransformerLayer}
-                      onLayerChange={setActiveTransformerLayer}
-                    />
-                  )}
-                  {activeLayer === 2 && (
-                    <OutputVisualizer
-                      probabilities={analysis.probabilities}
-                      logits={analysis.logits}
-                    />
-                  )}
-                </div>
+                {activeLayer === 0 && (
+                  <EmbeddingVisualizer
+                    tokens={analysis.tokens}
+                    embeddingData={analysis.embeddingData}
+                  />
+                )}
+                {activeLayer === 1 && (
+                  <AttentionHeadView
+                    tokens={analysis.tokens}
+                    transformerStates={analysis.transformerStates}
+                    activeLayer={activeTransformerLayer}
+                    onLayerChange={setActiveTransformerLayer}
+                  />
+                )}
+                {activeLayer === 2 && (
+                  <OutputVisualizer
+                    probabilities={analysis.probabilities}
+                    logits={analysis.logits}
+                  />
+                )}
               </div>
 
               <div className="space-y-6">

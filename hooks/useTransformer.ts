@@ -35,20 +35,7 @@ export function useTransformer() {
           throw new Error("Transformers 模块导入失败：返回的对象无效");
         }
 
-        // 安全地获取模块键
-        let moduleKeys: string[] = [];
-        try {
-          moduleKeys = Object.keys(TransformersModule);
-        } catch (e) {
-          console.warn("[Transformers] 无法获取模块键:", e);
-        }
-
-        console.log("[Transformers] 模块导入成功:", {
-          hasAutoModelForCausalLM: "AutoModelForCausalLM" in TransformersModule,
-          hasEnv: "env" in TransformersModule,
-          hasAutoTokenizer: "AutoTokenizer" in TransformersModule,
-          moduleKeys: moduleKeys,
-        });
+        console.log("[Transformers] 模块导入成功");
 
         // 使用命名导出，添加安全检查
         let AutoModelForCausalLM: any;
@@ -81,67 +68,16 @@ export function useTransformer() {
         // 等待一小段时间，确保模块完全初始化
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        // 获取 Hugging Face API token（从环境变量或 localStorage 读取）
-        // 注意：在浏览器中，环境变量需要通过 NEXT_PUBLIC_ 前缀暴露
-        const envToken = process.env.NEXT_PUBLIC_HUGGINGFACE_TOKEN;
-        const localToken =
-          typeof window !== "undefined"
-            ? localStorage.getItem("hf_token")
-            : null;
-
-        // 清理 token（移除可能的引号或空格）
-        const cleanEnvToken =
-          envToken?.trim().replace(/^["']|["']$/g, "") || null;
-        const cleanLocalToken =
-          localToken?.trim().replace(/^["']|["']$/g, "") || null;
-
-        const hfToken = cleanEnvToken || cleanLocalToken;
-
-        // 调试信息：检查环境变量是否被读取（不显示完整 token）
-        console.log("[Transformers] Token 检查详情:", {
-          hasEnvToken: !!cleanEnvToken,
-          hasLocalToken: !!cleanLocalToken,
-          hasToken: !!hfToken,
-          envTokenLength: cleanEnvToken?.length || 0,
-          localTokenLength: cleanLocalToken?.length || 0,
-          envTokenPreview: cleanEnvToken
-            ? `${cleanEnvToken.substring(0, 8)}...`
-            : "未设置",
-          localTokenPreview: cleanLocalToken
-            ? `${cleanLocalToken.substring(0, 8)}...`
-            : "未设置",
-          processEnvKeys:
-            typeof process !== "undefined" && process.env
-              ? Object.keys(process.env).filter(
-                  (k) => k.includes("HUGGINGFACE") || k.includes("HF")
-                )
-              : [],
-        });
-
+       
         // 配置环境变量（在访问属性前先检查）
         console.log("[Transformers] 配置环境变量...");
 
         // 检查缓存状态的辅助函数
         const checkCacheStatus = async () => {
           const cacheInfo: any = {
-            indexedDB: [],
             cacheAPI: [],
             envConfig: {},
           };
-
-          // 检查 IndexedDB
-          try {
-            if (typeof indexedDB !== "undefined") {
-              const databases = await indexedDB.databases();
-              cacheInfo.indexedDB = databases.map((db) => ({
-                name: db.name,
-                version: db.version,
-              }));
-              console.log("[Cache] IndexedDB 数据库列表:", cacheInfo.indexedDB);
-            }
-          } catch (e) {
-            console.warn("[Cache] 无法访问 IndexedDB:", e);
-          }
 
           // 检查 Cache API
           try {
@@ -192,46 +128,26 @@ export function useTransformer() {
           if (typeof env.remotePathTemplate !== "undefined") {
             env.remotePathTemplate = "{model}/resolve/{revision}/";
           }
-
-          if (!hfToken) {
-            console.warn(
-              "[Transformers] ⚠️ 未配置 API token，使用公开访问",
-              "\n提示: 如果遇到 401 错误，请：",
-              "\n1. 确保 .env.local 中有 NEXT_PUBLIC_HUGGINGFACE_TOKEN=your_token",
-              "\n2. 重启开发服务器 (npm run dev)",
-              "\n3. 或在浏览器控制台运行: localStorage.setItem('hf_token', 'your_token')",
-              "\n4. 然后刷新页面"
-            );
-          }
         } catch (envError) {
           console.warn("[Transformers] 环境变量配置警告:", envError);
           // 继续执行，某些环境变量可能不可配置
         }
 
         console.log("[Transformers] 开始加载模型:", modelName);
-        console.log("[Transformers] 模型选项预览:", {
-          hasToken: !!hfToken,
-          tokenLength: hfToken?.length || 0,
-          modelName,
-        });
 
         // 加载模型，添加超时和错误处理
         console.log("[Transformers] 加载 AutoModelForCausalLM...");
         let model;
         try {
-          model = await AutoModelForCausalLM.from_pretrained(
-            modelName,
-            {
-              progress_callback: (p: any) => {
-                if (p.status === "progress") {
-                  setLoadingProgress(p.progress);
-                  console.log("[Transformers] 加载进度:", p.progress);
-                }
+          model = await AutoModelForCausalLM.from_pretrained(modelName, {
+            progress_callback: (p: any) => {
+              if (p.status === "progress") {
+                setLoadingProgress(p.progress);
+                console.log("[Transformers] 加载进度:", p.progress);
               }
-            }
-          );
+            },
+          });
           console.log("[Transformers] ✅ 模型加载成功");
-          console.log("[Transformers] 原始模型对象:", model);
           // 加载后再次检查缓存状态
           console.log("[Cache] 模型加载后，检查缓存状态...");
           await checkCacheStatus();
@@ -250,45 +166,35 @@ export function useTransformer() {
             );
           }
 
-          // 如果是 401 错误，提供更详细的提示
-          if (
-            modelError?.message?.includes("401") ||
-            modelError?.status === 401
-          ) {
-            throw new Error(
-              `认证失败 (401): 无法访问模型 "${modelName}"。\n\n` +
-                `当前 token 状态: ${
-                  hfToken ? `已配置 (长度: ${hfToken.length})` : "未配置"
-                }\n\n` +
-                `解决方案：\n` +
-                `1. 检查 .env.local 中的 NEXT_PUBLIC_HUGGINGFACE_TOKEN 是否正确\n` +
-                `2. 重启开发服务器 (Ctrl+C 然后 npm run dev)\n` +
-                `3. 或在浏览器控制台运行: localStorage.setItem('hf_token', 'your_token')\n` +
-                `4. 获取 token: https://huggingface.co/settings/tokens`
-            );
-          }
           throw modelError;
         }
 
-
-          // 2. 加载 MiniLM (用于获取真实的 last_hidden_state)
-          
-          const featureModel = await TransformersModule.AutoModel.from_pretrained(
-            "Xenova/all-MiniLM-L6-v2",
-            { progress_callback: ( p: any) => setLoadingProgress(0.5 + p.progress * 0.5) }
-          );
-          console.log("[Transformers] 加载特征提取模型: Xenova/all-MiniLM-L6-v2", featureModel);
-        console.log("[Transformers] 开始加载分词器...");
-        const tokenizerOptions: any = {};
-        if (hfToken) {
-          tokenizerOptions.token = hfToken;
-          tokenizerOptions.accessToken = hfToken;
-          tokenizerOptions.useAuthToken = hfToken;
+        // 2. 加载 MiniLM (用于获取真实的 last_hidden_state)
+        console.log("[Transformers] 开始加载特征提取模型: Xenova/all-MiniLM-L6-v2");
+        let featureModel: any;
+        try {
+          featureModel =
+            await TransformersModule.AutoModel.from_pretrained(
+              "Xenova/all-MiniLM-L6-v2",
+              {
+                progress_callback: (p: any) =>
+                  setLoadingProgress(0.5 + p.progress * 0.5),
+              }
+            );
+          console.log("[Transformers] 加载特征提取模型: Xenova/all-MiniLM-L6-v2");
+        } catch (err) {
+          console.error("[Transformers] Xenova/all-MiniLM-L6-v2特征提取模型加载失败:", err);
         }
-        const tok = await AutoTokenizer.from_pretrained(
-          modelName,
-          tokenizerOptions
-        );
+
+        console.log("[Transformers] 开始加载分词器...");
+        let tok: any;
+        try {
+          tok = await AutoTokenizer.from_pretrained(
+            modelName
+          );
+        } catch (err) {
+          console.error("[Transformers] 分词器加载失败:", err);
+        }
 
         console.log("[Transformers] 初始化完成");
         setGenerator(() => model);
@@ -303,20 +209,15 @@ export function useTransformer() {
           name: err?.name,
         });
 
-        // 检查是否是 401 认证错误
+        // 检查是否是 404 错误
         const errorMessage = err?.message || "";
         let userFriendlyError = errorMessage;
 
         if (
-          errorMessage.includes("401") ||
-          errorMessage.includes("Unauthorized")
-        ) {
-          userFriendlyError = `认证失败 (401): 无法访问模型 "${currentModel}"。\n\n解决方案：\n1. 在 .env.local 中添加 NEXT_PUBLIC_HUGGINGFACE_TOKEN=your_token\n2. 或在浏览器控制台运行: localStorage.setItem('hf_token', 'your_token')\n3. 获取 token: https://huggingface.co/settings/tokens`;
-        } else if (
           errorMessage.includes("404") ||
           errorMessage.includes("Not Found")
         ) {
-          userFriendlyError = `模型未找到 (404): "${currentModel}" 可能不存在或路径错误。\n\n建议：尝试使用 "gpt2" 或其他公开可用的模型。`;
+          userFriendlyError = `模型未找到 (404): 可能不存在或路径错误。\n\n建议：尝试使用 "gpt2" 或其他公开可用的模型。`;
         }
 
         setError(userFriendlyError);
@@ -385,65 +286,20 @@ export function useTransformer() {
     return [];
   };
 
-  /**
-   * 将多头注意力格式的张量重塑为 hidden states 格式
-   * 输入: [batch, num_heads, seq_len, head_dim]
-   * 输出: [batch, seq_len, num_heads * head_dim]
-   */
-  const reshapeMultiHeadToHiddenStates = (
-    data: number[],
-    dims: number[]
-  ): { data: number[]; dims: number[] } => {
-    if (!dims || dims.length !== 4) {
-      // 如果不是 4 维，直接返回
-      return { data, dims };
-    }
-
-    const [batchSize, numHeads, seqLen, headDim] = dims;
-    const hiddenDim = numHeads * headDim;
-
-    // 重塑后的数据
-    const reshapedData: number[] = [];
-
-    // 原始数据布局: [batch][head][seq][dim]
-    // 目标数据布局: [batch][seq][head*dim]
-    for (let b = 0; b < batchSize; b++) {
-      for (let s = 0; s < seqLen; s++) {
-        // 对于每个位置，收集所有头的向量
-        for (let h = 0; h < numHeads; h++) {
-          for (let d = 0; d < headDim; d++) {
-            // 原始索引: b * (num_heads * seq_len * head_dim) + h * (seq_len * head_dim) + s * head_dim + d
-            const originalIndex =
-              b * (numHeads * seqLen * headDim) +
-              h * (seqLen * headDim) +
-              s * headDim +
-              d;
-            reshapedData.push(data[originalIndex] || 0);
-          }
-        }
-      }
-    }
-
-    return {
-      data: reshapedData,
-      dims: [batchSize, seqLen, hiddenDim],
-    };
-  };
-
   const generate = async (
     text: string,
     options?: { topK?: number; topP?: number }
   ) => {
     const topK = options?.topK ?? 10;
     const topP = options?.topP ?? 1.0;
-  
+
     try {
       // 对输入文本进行编码
       let encoded: any;
       try {
         // 尝试使用 tokenizer 编码
         encoded = await tokenizer(text);
-        console.log(encoded)
+        console.log(encoded);
       } catch (tokenizerError) {
         console.error("[Transformers] Tokenizer 编码失败:", tokenizerError);
         throw tokenizerError;
@@ -486,33 +342,72 @@ export function useTransformer() {
       }
 
       // --- 支路 2: 调用 MiniLM 获取真实 Embedding ---
-    console.log("[Transformers] MiniLM 提取特征...");
-    const featureOutputs = await miniModel(encoded); 
-    
-    // 从 MiniLM 中提取你在 Netron 看到的节点
-    let embeddingData: any = null;
-    if (featureOutputs.last_hidden_state) {
-      const tensor = featureOutputs.last_hidden_state;
-      const rawData = extractTensorData(tensor);
-      const dims = tensor.dims; // [1, seq_len, 384]
+      console.log("[Transformers] MiniLM 提取特征...");
+      const featureOutputs = await miniModel(encoded);
 
-      // 切分出每个 Token 的向量
-      const [batch, seqLen, dim] = dims;
-      const tokenEmbeddings: number[][] = [];
-      for (let i = 0; i < seqLen; i++) {
-        tokenEmbeddings.push(Array.from(rawData.slice(i * dim, (i + 1) * dim)));
+      // 从 MiniLM 中提取你在 Netron 看到的节点
+      let embeddingData: any = null;
+      if (featureOutputs.last_hidden_state) {
+        const tensor = featureOutputs.last_hidden_state;
+        const rawData = extractTensorData(tensor);
+        const dims = tensor.dims; // [1, seq_len, 384]
+
+        // 切分出每个 Token 的向量
+        const [batch, seqLen, dim] = dims;
+        const tokenEmbeddings: number[][] = [];
+        for (let i = 0; i < seqLen; i++) {
+          tokenEmbeddings.push(
+            Array.from(rawData.slice(i * dim, (i + 1) * dim))
+          );
+        }
+
+        embeddingData = {
+          data: rawData,
+          dims: dims,
+          tokenEmbeddings: tokenEmbeddings,
+        };
+        console.log("✅ 成功从 MiniLM 获取真实 Hidden States", embeddingData);
       }
 
-      embeddingData = {
-        data: rawData,
-        dims: dims,
-        tokenEmbeddings: tokenEmbeddings
-      };
-      console.log("✅ 成功从 MiniLM 获取真实 Hidden States", embeddingData);
-    }
+      // 1. 在 generate 函数内部，计算 probabilities 之后添加：
+      const calculateLoss = (allLogits: number[][], inputIds: number[]) => {
+        // allLogits 形状应为 [seqLen, vocabSize]
+        // inputIds 形状为 [seqLen]
 
-      // 提取 logits（最后一层的输出）
+        let totalLoss = 0;
+        const tokenLosses: number[] = [];
+
+        // 注意：对于第 i 个位置的预测，其 target 是 inputIds[i+1]
+        // 所以我们计算到 seqLen - 1 即可
+        for (let i = 0; i < inputIds.length - 1; i++) {
+          const currentLogits = allLogits[i];
+          const targetId = inputIds[i + 1];
+
+          // 计算 Softmax 概率（仅针对正确答案那个点）
+          const maxLogit = Math.max(...currentLogits);
+          const expLogits = currentLogits.map((l) => Math.exp(l - maxLogit));
+          const sumExp = expLogits.reduce((a, b) => a + b, 0);
+
+          const probOfTarget = expLogits[targetId] / sumExp;
+
+          // 计算负对数似然 (Negative Log Likelihood)
+          const loss = -Math.log(probOfTarget + 1e-10); // 防止 log(0)
+
+          tokenLosses.push(loss);
+          totalLoss += loss;
+        }
+
+        const avgLoss = totalLoss / (inputIds.length - 1);
+        return {
+          avgLoss,
+          perplexity: Math.exp(avgLoss),
+          tokenLosses, // 每个词带来的“惊讶程度”
+        };
+      };
+
+      // 提取 logits（最后一层的输出）与计算损失值lossStats
       let logits: number[] = [];
+      let lossStats: object = {};
       if (outputs?.logits) {
         const logitsTensor = outputs.logits;
         // logits 的形状通常是 [batch_size, sequence_length, vocab_size]
@@ -536,6 +431,19 @@ export function useTransformer() {
             console.log(
               `[Transformers] 提取最后一个 token 的 logits: seqLen=${seqLen}, vocabSize=${vocabSize}, 提取了 ${logits.length} 个值`
             );
+
+            // 将一维数据还原为二维 [seqLen, vocabSize]
+            const allLogitsMatrix: number[][] = [];
+            for (let i = 0; i < seqLen; i++) {
+              allLogitsMatrix.push(
+                logitsData.slice(i * vocabSize, (i + 1) * vocabSize)
+              );
+            }
+
+            lossStats = calculateLoss(allLogitsMatrix, rawIds);
+            // 将 lossStats 放入返回结果中
+
+            console.log("lossStats", lossStats);
           }
         }
 
@@ -702,6 +610,7 @@ export function useTransformer() {
         explanation: explanationText,
         transformerStates,
         embeddingData,
+        lossStats,
       };
     } catch (err: any) {
       console.error("推理过程出错:", err);
@@ -713,8 +622,6 @@ export function useTransformer() {
       return null;
     }
   };
-
-
 
   return { initModel, generate, isReady, loadingProgress, currentModel, error };
 }

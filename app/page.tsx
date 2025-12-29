@@ -50,7 +50,6 @@ const App: React.FC = () => {
   useEffect(() => {
     // 关键：只有在客户端挂载完成，且是本地模式，且模型没准备好时才触发
     if (mounted) {
-      console.log("组件已挂载");
       if (mode === "local" && !isReady) {
         console.log("触发本地模型初始化...");
         initModel();

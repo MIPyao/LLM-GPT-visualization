@@ -178,15 +178,18 @@ const AttentionHeadView: React.FC<Props> = ({
     <div className="space-y-6">
       {/* 层选择器 */}
       {availableLayers.length > 0 && onLayerChange && (
-        <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Transformer 层 (Layers)
-            </span>
+        <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/50">
+          <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-indigo-400">
+                注意力变换层 (Attention Transform)
+              </h3>
             <span className="text-xs text-slate-500">
               共 {availableLayers.length} 层
             </span>
           </div>
+          <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+              经过 L 层深层网络演变，利用 Q/K/V 矩阵计算权重，实现从原始嵌入到语义特征空间的非线性映射。
+              </p>
           <div className="flex flex-wrap gap-2">
             {availableLayers.map((layerIdx) => (
               <button
@@ -281,7 +284,7 @@ const AttentionHeadView: React.FC<Props> = ({
               <span className="text-indigo-300">每一行</span>
               代表一个词元（Query）对所有词元（Key）的注意力权重。
               <br />
-              <span className="text-cyan-300">
+              <span className="text-indigo-300">
                 经过 Softmax 归一化后，每行的和 = 1
               </span>
               ， 表示该词元将注意力"分配"给所有词元的总权重为 100%。

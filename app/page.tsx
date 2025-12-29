@@ -183,7 +183,7 @@ const App: React.FC = () => {
             <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
               LLM{" "}
               <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-cyan-400">
-                架构可视化
+                自回归模型架构可视化
               </span>
             </h1>
             <div className="relative group mt-4">
@@ -267,7 +267,7 @@ const App: React.FC = () => {
 
               <div className="space-y-6">
                 <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl">
-                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-lime-400 mb-4">
                     分词 (Tokenization)
                   </h3>
                   <div className="flex flex-wrap gap-2">

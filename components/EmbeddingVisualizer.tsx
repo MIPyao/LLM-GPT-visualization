@@ -70,9 +70,6 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
           <h3 className="text-xl font-bold text-cyan-400">
             输入嵌入层 (Deterministic Embedding)
           </h3>
-          <p className="text-xs text-slate-500">
-            基于词表索引生成的确定性高维向量映射
-          </p>
         </div>
         <div className="bg-cyan-500/10 text-cyan-400 text-[10px] px-2 py-1 rounded border border-cyan-500/20 font-mono">
           {embedDim ? `dim=${embedDim}` : "dim=768"}
@@ -83,7 +80,9 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
           )}
         </div>
       </div>
-
+      <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+        基于词表索引生成的确定性高维向量映射
+      </p>
       <div className="flex flex-wrap gap-4 mt-6">
         {tokens.map((token, idx) => {
           const vector = getTokenEmbedding(idx);
@@ -148,10 +147,10 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
       <div className="mt-8 grid grid-cols-2 gap-4 text-[10px] text-slate-500 font-mono">
         {/* 词元嵌入模块 */}
         <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-800">
-          <span className="text-cyan-500/70 block mb-2 font-bold">
+          <span className="text-cyan-500/70 block mb-2 font-bold text-xs">
             {hasRealData ? "// 词元嵌入 (WTE)" : "// 仿真语义空间"}
           </span>
-          <div className="text-slate-300 scale-90 origin-left">
+          <div className="text-slate-300 scale-90 origin-left text-xs">
             {hasRealData ? (
               <InlineMath
                 math={`\\mathbf{e}_{i} = \\text{WTE}[id_i] \\in \\mathbb{R}^{${
@@ -166,10 +165,10 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
 
         {/* 位置嵌入模块 */}
         <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-800">
-          <span className="text-cyan-500/70 block mb-2 font-bold">
+          <span className="text-cyan-500/70 block mb-2 font-bold text-xs">
             {hasRealData ? "// 位置嵌入 (WPE)" : "// 旋转/正弦位置编码"}
           </span>
-          <div className="text-slate-300 scale-90 origin-left">
+          <div className="text-slate-300 scale-90 origin-left text-xs">
             {hasRealData ? (
               <InlineMath
                 math={`\\mathbf{p}_{i} = \\text{WPE}[pos_i] \\in \\mathbb{R}^{${
@@ -182,7 +181,7 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
           </div>
 
           {hasRealData && (
-            <div className="mt-2 pt-2 border-t border-slate-800 text-cyan-400/70">
+            <div className="mt-2 pt-2 border-t border-slate-800 text-cyan-400/70 text-xs">
               <InlineMath math="\mathbf{h}_0 = \mathbf{e}_i + \mathbf{p}_i" />
             </div>
           )}

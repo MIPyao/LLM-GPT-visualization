@@ -365,30 +365,32 @@ const App: React.FC = () => {
                     <p className="text-slate-200 text-sm leading-relaxed font-medium">
                       "{analysis.explanation}"
                     </p>
-                    <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-slate-300">
-                      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
-                        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
-                          主模型
-                        </p>
-                        <p className="font-semibold text-white text-sm">
-                          {currentModel}
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-1">
-                          自回归 GPT-2 生成器，用于直接预测下一个 token
-                        </p>
+                    {mode === "local" && (
+                      <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-slate-300">
+                        <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                            主模型
+                          </p>
+                          <p className="font-semibold text-white text-sm">
+                            {currentModel}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            自回归 GPT-2 生成器，用于直接预测下一个 token
+                          </p>
+                        </div>
+                        <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                            特征提取
+                          </p>
+                          <p className="font-semibold text-white text-sm">
+                            Xenova/all-MiniLM-L6-v2
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            提供真实 embedding，用于注意力和嵌入可视化
+                          </p>
+                        </div>
                       </div>
-                      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
-                        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
-                          特征提取
-                        </p>
-                        <p className="font-semibold text-white text-sm">
-                          Xenova/all-MiniLM-L6-v2
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-1">
-                          提供真实 embedding，用于注意力和嵌入可视化
-                        </p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 

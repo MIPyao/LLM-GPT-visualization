@@ -5,6 +5,16 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    rules: {
+      // 再启用你的配置
+      "react/no-unescaped-entities": [
+        "error",
+        { forbid: [">", "}", '"', "'", "`"] },
+      ],
+      "@typescript-eslint/no-explicit-any": ["error"],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

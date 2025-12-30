@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import type { LossStats, TransformerStates } from "@/types";
 
 export type ModelType = "Xenova/tiny-random-gpt2" | "Xenova/gpt2" | "gpt2";
 
 export function useTransformer() {
   const [isReady, setIsReady] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [generatorProgress, setGeneratorProgress] = useState(0);
+  const [featureModelProgress, setFeatureModelProgress] = useState(0);
   const [generator, setGenerator] = useState<any>(null);
   const [miniModel, setMiniModel] = useState<any>(null);
   const [tokenizer, setTokenizer] = useState<any>(null);
@@ -19,7 +21,6 @@ export function useTransformer() {
       if (typeof window === "undefined") return;
 
       setIsReady(false);
-      setLoadingProgress(0);
       setCurrentModel(modelName);
       setError(null);
 
@@ -68,7 +69,6 @@ export function useTransformer() {
         // 等待一小段时间，确保模块完全初始化
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-       
         // 配置环境变量（在访问属性前先检查）
         console.log("[Transformers] 配置环境变量...");
 
@@ -142,8 +142,7 @@ export function useTransformer() {
           model = await AutoModelForCausalLM.from_pretrained(modelName, {
             progress_callback: (p: any) => {
               if (p.status === "progress") {
-                setLoadingProgress(p.progress);
-                console.log("[Transformers] 加载进度:", p.progress);
+                setGeneratorProgress(p.progress);
               }
             },
           });
@@ -170,28 +169,35 @@ export function useTransformer() {
         }
 
         // 2. 加载 MiniLM (用于获取真实的 last_hidden_state)
-        console.log("[Transformers] 开始加载特征提取模型: Xenova/all-MiniLM-L6-v2");
+        console.log(
+          "[Transformers] 开始加载特征提取模型: Xenova/all-MiniLM-L6-v2"
+        );
         let featureModel: any;
         try {
-          featureModel =
-            await TransformersModule.AutoModel.from_pretrained(
-              "Xenova/all-MiniLM-L6-v2",
-              {
-                progress_callback: (p: any) =>
-                  setLoadingProgress(0.5 + p.progress * 0.5),
-              }
-            );
-          console.log("[Transformers] 加载特征提取模型: Xenova/all-MiniLM-L6-v2");
+          featureModel = await TransformersModule.AutoModel.from_pretrained(
+            "Xenova/all-MiniLM-L6-v2",
+            {
+              progress_callback: (p: any) => {
+                if (p.status === "progress") {
+                  setFeatureModelProgress(p.progress);
+                }
+              },
+            }
+          );
+          console.log(
+            "[Transformers] 加载特征提取模型: Xenova/all-MiniLM-L6-v2"
+          );
         } catch (err) {
-          console.error("[Transformers] Xenova/all-MiniLM-L6-v2特征提取模型加载失败:", err);
+          console.error(
+            "[Transformers] Xenova/all-MiniLM-L6-v2特征提取模型加载失败:",
+            err
+          );
         }
 
         console.log("[Transformers] 开始加载分词器...");
         let tok: any;
         try {
-          tok = await AutoTokenizer.from_pretrained(
-            modelName
-          );
+          tok = await AutoTokenizer.from_pretrained(modelName);
         } catch (err) {
           console.error("[Transformers] 分词器加载失败:", err);
         }
@@ -200,6 +206,8 @@ export function useTransformer() {
         setGenerator(() => model);
         setMiniModel(() => featureModel);
         setTokenizer(() => tok);
+        setGeneratorProgress(1);
+        setFeatureModelProgress(1);
         setIsReady(true);
       } catch (err: any) {
         console.error("[Transformers] 初始化失败，启用高性能仿真模式:", err);
@@ -297,7 +305,6 @@ export function useTransformer() {
       // 对输入文本进行编码
       let encoded: any;
       try {
-        // 尝试使用 tokenizer 编码
         encoded = await tokenizer(text);
         console.log(encoded);
       } catch (tokenizerError) {
@@ -307,19 +314,25 @@ export function useTransformer() {
 
       // 提取 input_ids
       let inputIds: any;
-
       if (encoded?.input_ids) {
         inputIds = encoded.input_ids;
       }
 
-      // 提取 input_ids 的实际数据
-      let rawIds: number[] = [];
-      if (inputIds?.data) {
-        rawIds = Array.isArray(inputIds.data)
-          ? inputIds.data
-          : Array.from(inputIds.data);
-      }
+      const extractInputIds = (data: any): bigint[] => {
+        if (!data) return [];
+        if (
+          typeof BigInt64Array !== "undefined" &&
+          data instanceof BigInt64Array
+        ) {
+          return Array.from(data);
+        }
+        return [];
+      };
 
+      const encodedInputIds = extractInputIds(inputIds?.data);
+      const rawIds = encodedInputIds.map((value) =>
+        typeof value === "number" ? value : Number(value)
+      );
       // 解码 tokens（用于显示）
       const tokens = rawIds.map((id: number) => {
         try {
@@ -353,7 +366,7 @@ export function useTransformer() {
         const dims = tensor.dims; // [1, seq_len, 384]
 
         // 切分出每个 Token 的向量
-        const [batch, seqLen, dim] = dims;
+        const [, seqLen, dim] = dims;
         const tokenEmbeddings: number[][] = [];
         for (let i = 0; i < seqLen; i++) {
           tokenEmbeddings.push(
@@ -407,7 +420,7 @@ export function useTransformer() {
 
       // 提取 logits（最后一层的输出）与计算损失值lossStats
       let logits: number[] = [];
-      let lossStats: object = {};
+      let lossStats: LossStats | null = null;
       if (outputs?.logits) {
         const logitsTensor = outputs.logits;
         // logits 的形状通常是 [batch_size, sequence_length, vocab_size]
@@ -421,7 +434,7 @@ export function useTransformer() {
           const dims = logitsTensor.dims;
           if (dims.length === 3) {
             // [batch_size, seq_len, vocab_size]
-            const [batchSize, seqLen, vocabSize] = dims;
+            const [, seqLen, vocabSize] = dims;
             // 获取最后一个 token 的 logits（索引为 seqLen - 1）
             const lastTokenIndex = (seqLen - 1) * vocabSize;
             logits = logitsData.slice(
@@ -441,21 +454,21 @@ export function useTransformer() {
             }
 
             lossStats = calculateLoss(allLogitsMatrix, rawIds);
-            // 将 lossStats 放入返回结果中
-
-            console.log("lossStats", lossStats);
           }
         }
 
         console.log(`[Transformers] 最终提取了 ${logits.length} 个 logits 值`);
       }
 
-      const transformerStates: any[] = [];
+      const transformerStates: TransformerStates[] = [];
 
       // 提取 past_key_values （transformer层的输出）
       if (outputs?.past_key_values) {
         // past_key_values 包含每一层的 key 和 value 张量
-        console.log("[Transformers] 从 past_key_values 中提取层信息...");
+        console.log(
+          "[Transformers] 从 past_key_values 中提取层信息...",
+          outputs.past_key_values
+        );
 
         const pastKeyValues = outputs.past_key_values;
 
@@ -477,11 +490,6 @@ export function useTransformer() {
             }
           });
 
-          console.log(
-            `[Transformers] 找到 ${layerIndices.size} 层，键映射:`,
-            Array.from(keyMap.entries())
-          );
-
           // 按层索引排序并提取数据
           Array.from(layerIndices)
             .sort((a, b) => a - b)
@@ -499,8 +507,6 @@ export function useTransformer() {
               if (mainTensor) {
                 transformerStates.push({
                   layerIndex,
-                  hasKey: !!keyKey,
-                  hasValue: !!valueKey,
                   // 保存 key 和 value 的原始数据用于注意力可视化
                   keyData: keyTensor ? extractTensorData(keyTensor) : undefined,
                   valueData: valueTensor
@@ -591,10 +597,6 @@ export function useTransformer() {
             }
           })
         );
-
-        console.log(
-          `[Transformers] 计算了 ${probabilities.length} 个 top tokens 的概率分布 (TopK=${topK}, TopP=${topP})`
-        );
       }
 
       // 生成解释文本
@@ -602,6 +604,7 @@ export function useTransformer() {
       if (transformerStates && transformerStates.length > 0) {
         explanationText += `已从 past_key_values 中提取 ${transformerStates.length} 层的信息（包含注意力机制的 key/value）和最后一层的 logits。`;
       }
+      explanationText += ` 同时使用特征提取器 Xenova/all-MiniLM-L6-v2 提取 token embedding，便于后续可视化。`;
 
       return {
         tokens,
@@ -611,6 +614,7 @@ export function useTransformer() {
         transformerStates,
         embeddingData,
         lossStats,
+        encodedInputIds: encodedInputIds.length ? encodedInputIds : undefined,
       };
     } catch (err: any) {
       console.error("推理过程出错:", err);
@@ -623,5 +627,13 @@ export function useTransformer() {
     }
   };
 
-  return { initModel, generate, isReady, loadingProgress, currentModel, error };
+  return {
+    initModel,
+    generate,
+    isReady,
+    generatorProgress,
+    featureModelProgress,
+    currentModel,
+    error,
+  };
 }

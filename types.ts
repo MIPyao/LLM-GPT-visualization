@@ -31,6 +31,12 @@ export interface EmbeddingData {
   tokenEmbeddings?: number[][]; // 每个token的嵌入向量 [seq_len, embed_dim]
 }
 
+export interface LossStats {
+  avgLoss: number;
+  perplexity: number;
+  tokenLosses: number[];
+}
+
 export interface AnalysisResult {
   tokens: string[];
   explanation: string;
@@ -38,4 +44,6 @@ export interface AnalysisResult {
   transformerStates?: TransformerStates[] | null;
   logits?: { token: string; logit: number }[]; // Softmax 之前的原始 logits
   embeddingData?: EmbeddingData | null; // 嵌入层数据（词元嵌入+位置嵌入）
+  lossStats?: LossStats | null;
+  encodedInputIds?: bigint[];
 }

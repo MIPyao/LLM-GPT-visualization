@@ -63,13 +63,13 @@ const AttentionHeadView: React.FC<Props> = ({
       currentLayerData?.valueDims
     ) {
       const keyDims = currentLayerData.keyDims;
-      const valueDims = currentLayerData.valueDims;
+      // const valueDims = currentLayerData.valueDims;
       const keyData = currentLayerData.keyData;
-      const valueData = currentLayerData.valueData;
+      // const valueData = currentLayerData.valueData;
 
       // 解析维度: [batch, num_heads, seq_len, head_dim]
       // 例如: [1, 12, 4, 64]
-      const [batchSize, numHeads, seqLen, headDim] =
+      const [, numHeads, seqLen, headDim] =
         keyDims.length === 4
           ? keyDims
           : keyDims.length === 3
@@ -131,12 +131,6 @@ const AttentionHeadView: React.FC<Props> = ({
           mat[i][j] = expScores[j] / sum;
         }
       }
-
-      console.log(
-        `[Attention] 使用真实 Key 数据计算注意力矩阵 (头 ${activeHead}, 维度: [${keyDims.join(
-          ", "
-        )}])`
-      );
     } else {
       // 如果没有真实数据，使用模拟数据（向后兼容）
       console.log("[Attention] 使用模拟数据计算注意力矩阵");

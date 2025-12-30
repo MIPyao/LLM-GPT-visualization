@@ -1,14 +1,21 @@
 "use client";
+
 import React, { useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { Eye, EyeOff } from "lucide-react";
+import type { LossStats } from "@/types";
 
 interface Props {
   probabilities: { token: string; prob: number }[];
   logits?: { token: string; logit: number }[];
+  lossStats?: LossStats | null;
 }
 
-const OutputVisualizer: React.FC<Props> = ({ probabilities, logits }) => {
+const OutputVisualizer: React.FC<Props> = ({
+  probabilities,
+  logits,
+  lossStats,
+}) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
   const [showLogits, setShowLogits] = useState(false);
@@ -139,7 +146,7 @@ const OutputVisualizer: React.FC<Props> = ({ probabilities, logits }) => {
       // We don't dispose here to prevent flickering on re-renders,
       // instead we update the option above.
     };
-  }, [displayData, isLogitsMode]);
+  }, [isLogitsMode, chartData]);
 
   return (
     <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/50">
@@ -182,26 +189,49 @@ const OutputVisualizer: React.FC<Props> = ({ probabilities, logits }) => {
         )}
       </div>
 
-      <div className="mt-4 p-4 bg-emerald-950/20 border border-emerald-500/20 rounded-xl">
-        <span className="text-xs font-black text-emerald-500 uppercase tracking-widest block mb-1">
-          最佳候选 Token
-        </span>
-        <div className="flex items-center justify-between">
-          <span className="text-xl font-bold text-white">
-            {bestToken?.token || "..."}
+      <div className="mt-4 space-y-4">
+        <div className="p-4 bg-emerald-950/20 border border-emerald-500/20 rounded-xl">
+          <span className="text-xs font-black text-emerald-500 uppercase tracking-widest block mb-1">
+            最佳候选 Token
           </span>
-          {bestToken && (
-            <span className="text-xs text-emerald-400 font-mono">
-              {isLogitsMode
-                ? `logit: ${(
-                    bestToken as { token: string; logit: number }
-                  ).logit.toFixed(2)}`
-                : `prob: ${(
-                    (bestToken as { token: string; prob: number }).prob * 100
-                  ).toFixed(2)}%`}
+          <div className="flex items-center justify-between">
+            <span className="text-xl font-bold text-white">
+              {bestToken?.token || "..."}
             </span>
-          )}
+            {bestToken && (
+              <span className="text-xs text-emerald-400 font-mono">
+                {isLogitsMode
+                  ? `logit: ${(
+                      bestToken as { token: string; logit: number }
+                    ).logit.toFixed(2)}`
+                  : `prob: ${(
+                      (bestToken as { token: string; prob: number }).prob * 100
+                    ).toFixed(2)}%`}
+              </span>
+            )}
+          </div>
         </div>
+        {lossStats && (
+          <div className="p-4 bg-slate-900/20 border border-slate-800 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.4em] text-slate-400">
+                平均损失 / 困惑度
+              </span>
+              <span className="text-xs text-slate-400 font-mono">avgLoss</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-white">
+                {lossStats.avgLoss.toFixed(4)}
+              </span>
+              <span className="text-sm font-bold text-emerald-300">
+                {lossStats.perplexity.toFixed(2)}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              向后传播时每个 token 的 nll，用于衡量模型的「惊讶程度」。
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

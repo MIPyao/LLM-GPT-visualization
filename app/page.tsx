@@ -21,6 +21,24 @@ import OutputVisualizer from "@/components/OutputVisualizer";
 import SettingsModal from "@/components/SettingsModal";
 import { AnalysisResult } from "@/types";
 
+const ProgressRow: React.FC<{ label: string; progress: number }> = ({
+  label,
+  progress,
+}) => (
+  <div className="space-y-1">
+    <div className="flex items-center justify-between text-[11px] text-slate-400">
+      <span>{label}</span>
+      <span>{Math.round(progress)}%</span>
+    </div>
+    <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+      <div
+        className="h-full bg-linear-to-r from-indigo-500 to-cyan-500 transition-all duration-300"
+        style={{ width: `${Math.min(Math.max(progress, 0), 1) * 100}%` }}
+      />
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const [input, setInput] = useState("Attention is all you need");
@@ -36,9 +54,10 @@ const App: React.FC = () => {
   const {
     initModel,
     isReady,
-    loadingProgress,
+    generatorProgress,
+    featureModelProgress,
+    currentModel,
     generate,
-    error: modelError,
   } = useTransformer();
 
   // 1. 专门负责挂载标记
@@ -87,6 +106,12 @@ const App: React.FC = () => {
     }
   };
 
+  const formatEncodedId = (value: number | bigint) =>
+    typeof value === "bigint" ? `${value}n` : value.toString();
+
+  const encodedIds = analysis?.encodedInputIds ?? [];
+  const tokenLosses = analysis?.lossStats?.tokenLosses ?? [];
+
   // 解决 Next.js SSR 引起的不一致问题
   if (!mounted) return <div className="min-h-screen bg-[#020617]" />;
 
@@ -111,21 +136,18 @@ const App: React.FC = () => {
                 正在加载本地模型
               </h2>
               <p className="text-slate-400 text-sm">
-                首次加载需要下载模型文件，请稍候...
+                GPT2 生成器和 Xenova/all-MiniLM-L6-v2 特征提取器逐步加载中。
               </p>
-              {loadingProgress > 0 && loadingProgress < 1 && (
-                <div className="mt-4 space-y-2">
-                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-linear-to-r from-indigo-500 to-cyan-500 transition-all duration-300"
-                      style={{ width: `${loadingProgress * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-500 font-mono">
-                    {Math.round(loadingProgress * 100)}%
-                  </p>
-                </div>
-              )}
+              <div className="mt-4 space-y-3 text-left">
+                <ProgressRow
+                  label={`主模型：${currentModel}`}
+                  progress={generatorProgress}
+                />
+                <ProgressRow
+                  label="特征提取：Xenova/all-MiniLM-L6-v2"
+                  progress={featureModelProgress}
+                />
+              </div>
             </div>
             <div className="pt-4 border-t border-slate-800">
               <p className="text-xs text-slate-500">
@@ -261,6 +283,7 @@ const App: React.FC = () => {
                   <OutputVisualizer
                     probabilities={analysis.probabilities}
                     logits={analysis.logits}
+                    lossStats={analysis.lossStats}
                   />
                 )}
               </div>
@@ -285,6 +308,50 @@ const App: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                  {encodedIds.length > 0 && (
+                    <div className="mt-6 space-y-1 bg-slate-900/40 border border-slate-800 rounded-2xl p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs uppercase text-slate-400">
+                          嵌入Token词表ID (encoded input_ids)
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-[11px] font-mono text-emerald-300">
+                        {encodedIds.map((id, idx) => (
+                          <span key={`${idx}-${id}`}>
+                            {idx}: {formatEncodedId(id)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {tokenLosses.length > 0 && (
+                    <div className="mt-6 space-y-3 bg-slate-900/30 border border-slate-800 rounded-2xl p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase text-slate-400">
+                          Token损失值(NLL)
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {tokenLosses.map((loss, idx) => (
+                          <div
+                            key={`loss-${idx}`}
+                            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-mono text-slate-200"
+                          >
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                              #{idx}
+                            </div>
+                            <div className="font-semibold text-xs text-white">
+                              {loss.toFixed(4)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        每个位置对应的负对数似然值，反映模型对下一个
+                        token的信心。
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-start gap-4 p-6 bg-slate-900/30 rounded-2xl border border-slate-800/50">
@@ -298,6 +365,30 @@ const App: React.FC = () => {
                     <p className="text-slate-200 text-sm leading-relaxed font-medium">
                       "{analysis.explanation}"
                     </p>
+                    <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-slate-300">
+                      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                          主模型
+                        </p>
+                        <p className="font-semibold text-white text-sm">
+                          {currentModel}
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          自回归 GPT-2 生成器，用于直接预测下一个 token
+                        </p>
+                      </div>
+                      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                          特征提取
+                        </p>
+                        <p className="font-semibold text-white text-sm">
+                          Xenova/all-MiniLM-L6-v2
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          提供真实 embedding，用于注意力和嵌入可视化
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

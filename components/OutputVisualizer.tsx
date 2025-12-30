@@ -214,22 +214,28 @@ const OutputVisualizer: React.FC<Props> = ({
         {lossStats && (
           <div className="p-4 bg-slate-900/20 border border-slate-800 rounded-2xl space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-[0.4em] text-slate-400">
-                平均损失 / 困惑度
+              <span className="text-xs text-slate-400">
+                平均损失
               </span>
-              <span className="text-xs text-slate-400 font-mono">avgLoss</span>
+              <span className="text-xs text-slate-400">困惑度</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-white">
+              <span className="text-sm font-bold text-emerald-300">
                 {lossStats.avgLoss.toFixed(4)}
               </span>
               <span className="text-sm font-bold text-emerald-300">
                 {lossStats.perplexity.toFixed(2)}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500">
-              向后传播时每个 token 的 nll，用于衡量模型的「惊讶程度」。
-            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">
+                向后传播时每个 token 的 NLL，用于衡量模型的「惊讶程度」。
+              </span>
+              <span className="text-[11px] text-slate-500">
+                语言模型对文本的“不确定性” 或 “混乱度” 的度量，数值越低，说明模型对文本的预测能力越强。
+              </span>
+            </div>
+           
           </div>
         )}
       </div>

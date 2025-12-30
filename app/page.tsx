@@ -136,7 +136,7 @@ const App: React.FC = () => {
                 正在加载本地模型
               </h2>
               <p className="text-slate-400 text-sm">
-                GPT2 生成器和 Xenova/all-MiniLM-L6-v2 特征提取器逐步加载中。
+                GPT2 生成器和 MiniLM 特征提取器逐步加载中。
               </p>
               <div className="mt-4 space-y-3 text-left">
                 <ProgressRow
@@ -299,7 +299,7 @@ const App: React.FC = () => {
                         key={i}
                         className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg flex flex-col items-center"
                       >
-                        <span className="text-indigo-400 text-[10px] font-mono mb-1">
+                        <span className="text-lime-400 text-[10px] font-mono mb-1">
                           {i}
                         </span>
                         <span className="text-sm font-bold text-white">
@@ -315,7 +315,7 @@ const App: React.FC = () => {
                           嵌入Token词表ID (encoded input_ids)
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-3 text-[11px] font-mono text-emerald-300">
+                      <div className="flex flex-wrap gap-3 text-[11px] font-mono text-lime-400">
                         {encodedIds.map((id, idx) => (
                           <span key={`${idx}-${id}`}>
                             {idx}: {formatEncodedId(id)}
@@ -386,7 +386,7 @@ const App: React.FC = () => {
                             Xenova/all-MiniLM-L6-v2
                           </p>
                           <p className="text-[10px] text-slate-500 mt-1">
-                            提供真实 embedding，用于注意力和嵌入可视化
+                            提供真实 embedding，用于嵌入可视化
                           </p>
                         </div>
                       </div>

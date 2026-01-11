@@ -348,6 +348,7 @@ const AttentionHeadView: React.FC<Props> = ({
                 y1="0%"
                 x2="0%"
                 y2="100%"
+                gradientUnits="userSpaceOnUse"
               >
                 <stop offset="0%" stopColor="rgba(99, 102, 241, 0.8)" />
                 <stop offset="100%" stopColor="rgba(34, 211, 238, 0.8)" />

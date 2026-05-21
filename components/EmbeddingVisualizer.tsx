@@ -111,6 +111,8 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
                 {displayVector.map((val, vIdx) => {
                   const normalizedVal = hasRealData ? normalizeValue(val) : val;
                   const isPositive = val >= 0;
+                  const magnitude = Math.abs(val);
+                  const shouldGlow = hasRealData ? magnitude > 2.0 : Math.abs(normalizedVal - 0.5) > 0.2;
                   return (
                     <div
                       key={vIdx}
@@ -119,7 +121,7 @@ const EmbeddingVisualizer: React.FC<Props> = ({ tokens, embeddingData }) => {
                         backgroundColor: isPositive
                           ? `rgba(6, 182, 212, ${normalizedVal * 0.9 + 0.1})`
                           : `rgba(244, 63, 94, ${1 - normalizedVal})`,
-                        boxShadow: normalizedVal > 0.7 ? `0 0 4px ${isPositive ? 'rgba(6,182,212,0.6)' : 'rgba(244,63,94,0.6)'}` : 'none',
+                        boxShadow: shouldGlow ? `0 0 4px ${isPositive ? 'rgba(6,182,212,0.6)' : 'rgba(244,63,94,0.6)'}` : 'none',
                       }}
                       title={`维度 ${vIdx}: ${val.toFixed(4)}`}
                     />

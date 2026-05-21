@@ -218,12 +218,3 @@ button {
 .z-overlay { z-index: 100; }
 .z-modal { z-index: 200; }
 .z-tooltip { z-index: 300; }
-
-/* 暗黑模式下的对比度优化 */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg-primary: #080a0f;
-    --color-bg-secondary: #0f131a;
-    --color-bg-tertiary: #171e29;
-  }
-}

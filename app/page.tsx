@@ -66,10 +66,10 @@ const ProgressRow: React.FC<{ label: string; progress: number }> = ({
       </div>
       <div className="relative w-full h-2.5 bg-slate-800/80 rounded-full overflow-hidden">
         {/* 静态背景条 */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900 to-slate-800" />
+        <div className="absolute inset-0 bg-linear-to-r from-slate-900 to-slate-800" />
         {/* 动态进度条 */}
         <div
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-cyan-400"
+          className="absolute inset-y-0 left-0 bg-linear-to-r from-indigo-500 to-cyan-400"
           style={{
             width: `${safeProgress * 100}%`,
             boxShadow: safeProgress > 0.1 ? "0 0 8px rgba(99, 102, 241, 0.5)" : "none",
@@ -193,14 +193,12 @@ const App: React.FC = () => {
     root.style.setProperty("--color-primary", theme.primary);
     root.style.setProperty("--gradient-primary", theme.gradient);
 
-    const duration = 1 / animationSpeed;
-    root.style.setProperty("--duration-normal", `${300 * duration}ms`);
+    root.style.setProperty("--duration-normal", `${300 / animationSpeed}ms`);
   }, [themeColor, animationSpeed, mounted]);
 
   // 粒子背景效果
   useEffect(() => {
     if (!particlesEnabled || !canvasRef.current) {
-      console.log('Particle effect skipped:', { particlesEnabled, canvasRef: !!canvasRef.current });
       return;
     }
 
@@ -208,20 +206,32 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      console.error('Failed to get 2D context');
       return;
     }
 
-    console.log('Particle effect initialized');
-
     let animationFrameId: number;
     let particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; alpha: number }> = [];
+
+    // Read primary color once at initialization
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#6366f1';
+    let baseR = 99, baseG = 102, baseB = 241; // default #6366f1
+    if (primaryColor.startsWith('#')) {
+      baseR = parseInt(primaryColor.slice(1, 3), 16);
+      baseG = parseInt(primaryColor.slice(3, 5), 16);
+      baseB = parseInt(primaryColor.slice(5, 7), 16);
+    } else if (primaryColor.startsWith('rgb(')) {
+      const match = primaryColor.match(/\d+/g);
+      if (match) {
+        baseR = parseInt(match[0]);
+        baseG = parseInt(match[1]);
+        baseB = parseInt(match[2]);
+      }
+    }
 
     const resize = () => {
       // 使用 window 尺寸作为 canvas 尺寸 (全屏背景)
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      console.log('Canvas resized to:', canvas.width, canvas.height);
     };
 
     const createParticles = () => {
@@ -237,27 +247,10 @@ const App: React.FC = () => {
           alpha: Math.random() * 0.5 + 0.1,
         });
       }
-      console.log('Created', particles.length, 'particles');
     };
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#6366f1';
-
-      // 解析主色调的 RGB 值
-      let baseR = 99, baseG = 102, baseB = 241; // default #6366f1
-      if (primaryColor.startsWith('#')) {
-        baseR = parseInt(primaryColor.slice(1, 3), 16);
-        baseG = parseInt(primaryColor.slice(3, 5), 16);
-        baseB = parseInt(primaryColor.slice(5, 7), 16);
-      } else if (primaryColor.startsWith('rgb(')) {
-        const match = primaryColor.match(/\d+/g);
-        if (match) {
-          baseR = parseInt(match[0]);
-          baseG = parseInt(match[1]);
-          baseB = parseInt(match[2]);
-        }
-      }
 
       particles.forEach(p => {
         ctx.beginPath();
@@ -269,8 +262,8 @@ const App: React.FC = () => {
 
     const update = () => {
       particles.forEach(p => {
-        p.x += p.vx * animationSpeed;
-        p.y += p.vy * animationSpeed;
+        p.x += p.vx / animationSpeed;
+        p.y += p.vy / animationSpeed;
 
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
@@ -282,8 +275,6 @@ const App: React.FC = () => {
       draw();
       animationFrameId = requestAnimationFrame(animate);
     };
-
-    console.log('Starting animation loop');
 
     // 确保 canvas 尺寸正确
     resize();
@@ -301,7 +292,7 @@ const App: React.FC = () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
     };
-  }, [particlesEnabled, animationSpeed, mounted]);
+  }, [particlesEnabled, animationSpeed, themeColor, mounted]);
 
   // 解决 Next.js SSR 引起的不一致问题
   if (!mounted) return null;
@@ -372,7 +363,7 @@ const App: React.FC = () => {
       <aside className="fixed left-0 top-0 h-full w-20 flex flex-col items-center py-8 border-r border-slate-800/50 bg-slate-950/90 backdrop-blur-xl z-[100]">
         {/* Logo 区域 */}
         <div className="relative group">
-          <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-2xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-500" />
+          <div className="absolute -inset-2 bg-linear-to-r from-indigo-500 to-cyan-400 rounded-2xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-500" />
           <div className="relative w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg ring-1 ring-white/5">
             <Cpu className="text-white w-6 h-6" />
           </div>
@@ -390,7 +381,7 @@ const App: React.FC = () => {
               disabled={isModelLoading}
               className={`group relative p-3.5 rounded-xl transition-all duration-300 disabled:opacity-40 ${
                 activeLayer === item.id
-                  ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-lg ring-1 ring-indigo-500/50"
+                  ? "bg-linear-to-br from-indigo-600 to-indigo-700 text-white shadow-lg ring-1 ring-indigo-500/50"
                   : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
               }`}
             >
@@ -440,7 +431,7 @@ const App: React.FC = () => {
 
             {/* 输入区 */}
             <div className="relative group mt-6 max-w-3xl">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/50 to-cyan-400/50 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity" />
+              <div className="absolute -inset-0.5 bg-linear-to-r from-indigo-500/50 to-cyan-400/50 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity" />
               <div className="relative flex items-center bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-xl focus-within:border-indigo-500/50 transition-all shadow-xl">
                 <input
                   type="text"
@@ -456,11 +447,11 @@ const App: React.FC = () => {
                 <button
                   onClick={handleProcess}
                   disabled={loading || isModelLoading}
-                  className="magnetic-button relative mx-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-lg ring-1 ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 overflow-hidden"
+                  className="magnetic-button relative mx-3 bg-linear-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-lg ring-1 ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 overflow-hidden"
                 >
                   <span className="relative z-10">{loading ? "处理中..." : "运行分析"}</span>
                   {!loading && <ArrowRight className="w-4 h-4 relative z-10" />}
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-linear-to-r from-cyan-500/20 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
                 </button>
               </div>
             </div>
@@ -631,7 +622,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* 状态卡片 */}
-                <div className="glass bg-gradient-to-br from-indigo-900/40 to-indigo-950/60 p-6 rounded-2xl shadow-lg ring-1 ring-indigo-500/10">
+                <div className="glass bg-linear-to-br from-indigo-900/40 to-indigo-950/60 p-6 rounded-2xl shadow-lg ring-1 ring-indigo-500/10">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-white/60 text-[10px] font-black uppercase tracking-[0.15em]">
                       推理引擎状态
@@ -653,7 +644,7 @@ const App: React.FC = () => {
           ) : (
             <div className="glass rounded-3xl border border-dashed border-slate-700/50 flex flex-col items-center justify-center py-40 relative overflow-hidden group">
               {/* 装饰性动态背景 */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.02] to-cyan-400/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="absolute inset-0 bg-linear-to-br from-indigo-500/[0.02] to-cyan-400/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
               <div className="relative z-10 text-center px-8">
                 <div className="relative w-16 h-16 mx-auto mb-6">
                   <div className="absolute inset-0 bg-indigo-500/10 rounded-full blur-xl animate-pulse" />
@@ -725,9 +716,9 @@ const App: React.FC = () => {
                 onChange={(e) => setAnimationSpeed(Number(e.target.value))}
                 className="w-full bg-slate-800/80 border border-slate-700/50 rounded-lg px-3 py-2 text-slate-200 focus:border-indigo-500/50 outline-none"
               >
-                <option value={0.5}>快速 (0.5x)</option>
+                <option value={0.5}>缓慢 (0.5x)</option>
                 <option value={1}>正常 (1x)</option>
-                <option value={1.5}>缓慢 (1.5x)</option>
+                <option value={1.5}>快速 (1.5x)</option>
               </select>
             </div>
             <div className="flex items-center justify-between">

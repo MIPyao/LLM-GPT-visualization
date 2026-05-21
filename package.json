@@ -33,5 +33,8 @@
     "overrides": {
       "sharp": "^0.34.5"
     }
+  },
+  "overrides": {
+    "sharp": "^0.34.5"
   }
 }

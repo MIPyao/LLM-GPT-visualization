@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
+import type { CallbackDataParams } from "echarts/types/dist/shared";
 import { Eye, EyeOff, BarChart3 } from "lucide-react";
 import type { LossStats } from "@/types";
 
@@ -70,18 +71,20 @@ const OutputVisualizer: React.FC<Props> = ({
         borderWidth: 1,
         textStyle: { color: "#e2e8f0", fontSize: 12 },
         padding: [8, 12],
-        formatter: (params: any) => {
-          const p = params.data && params.data[0];
+        formatter: (params: CallbackDataParams | CallbackDataParams[]) => {
+          const p = Array.isArray(params) ? params[0] : params;
           if (!p) return "";
-          const color = params.color;
+          const color = p.color;
+          const name = p.name;
+          const value = p.value;
           return (
             '<div class="flex items-center gap-2 mb-1">' +
               `<div class="w-2 h-2 rounded-full" style="background:${color}"></div>` +
-              `<span class="font-bold text-slate-100">"${p.name}"</span>` +
+              `<span class="font-bold text-slate-100">"${name}"</span>` +
             '</div>' +
             '<div class="flex items-center gap-2">' +
               `<span class="text-slate-400">${isLogitsMode ? "Logit" : "概率"}:</span>` +
-              `<span class="font-mono font-bold" style="color:${color}">${p.value}${isLogitsMode ? "" : "%"}</span>` +
+              `<span class="font-mono font-bold" style="color:${color}">${value}${isLogitsMode ? "" : "%"}</span>` +
             '</div>'
           );
         },

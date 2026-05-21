@@ -170,7 +170,7 @@ const AttentionHeadView: React.FC<Props> = ({
                 onClick={() => onLayerChange(layerIdx)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   activeLayer === layerIdx
-                    ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-[0_0_12px_rgba(79,70,229,0.5)] ring-1 ring-indigo-500/50"
+                    ? "bg-linear-to-r from-indigo-600 to-indigo-500 text-white shadow-[0_0_12px_rgba(79,70,229,0.5)] ring-1 ring-indigo-500/50"
                     : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700/50"
                 }`}
               >
@@ -227,7 +227,7 @@ const AttentionHeadView: React.FC<Props> = ({
               onClick={() => setActiveHead(h)}
               className={`w-9 h-9 rounded text-[10px] font-black transition-all ${
                 activeHead === h
-                  ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]"
+                  ? "bg-linear-to-br from-indigo-600 to-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]"
                   : "bg-slate-800/60 text-slate-500 hover:bg-slate-700 hover:text-slate-200 border border-slate-700/50"
               }`}
             >

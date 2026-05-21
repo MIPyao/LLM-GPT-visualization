@@ -32,10 +32,9 @@
   "pnpm": {
     "overrides": {
       "sharp": "^0.34.5"
-    },
-    "ignoredBuiltDependencies": [
-      "sharp",
-      "unrs-resolver"
-    ]
+    }
+  },
+  "overrides": {
+    "sharp": "^0.34.5"
   }
 }

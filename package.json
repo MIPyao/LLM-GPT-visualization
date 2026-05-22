@@ -29,9 +29,7 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "pnpm": {
-    "overrides": {
-      "sharp": "^0.34.5"
-    }
+  "overrides": {
+    "sharp": "^0.34.5"
   }
 }
